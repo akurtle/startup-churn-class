@@ -49,6 +49,18 @@ python train.py
 uvicorn startup_churn_classifier.api.main:app --reload
 ```
 
+## Task Runner
+
+Use the lightweight task runner for common workflows:
+
+```bash
+python tasks.py install
+python tasks.py train
+python tasks.py serve
+python tasks.py test
+python tasks.py docker-build
+```
+
 Each `python train.py` run also writes:
 
 - `results/runs/<run_id>.json` for the full run record
