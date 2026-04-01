@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from startup_churn_classifier.config import ARTIFACTS_DIR, FEATURE_COLUMNS
+from startup_churn_classifier.config import ARTIFACTS_DIR, FEATURE_COLUMNS, MODEL_FEATURE_COLUMNS
 from startup_churn_classifier.models.pytorch_mlp import StartupMLP, predict_probabilities
 from startup_churn_classifier.preprocessing import clean_startup_frame
 
@@ -40,7 +40,7 @@ class StartupChurnPredictor:
         else:
             self.preprocessor = joblib.load(ARTIFACTS_DIR / "preprocessor.joblib")
             transformed_width = self.preprocessor.transform(
-                pd.DataFrame([{feature: np.nan for feature in FEATURE_COLUMNS}])
+                pd.DataFrame([{feature: np.nan for feature in MODEL_FEATURE_COLUMNS}])
             )
             if hasattr(transformed_width, "toarray"):
                 transformed_width = transformed_width.toarray()
@@ -52,7 +52,7 @@ class StartupChurnPredictor:
 
     def predict(self, payload: dict[str, object]) -> PredictionResult:
         frame = pd.DataFrame([payload], columns=FEATURE_COLUMNS)
-        cleaned = clean_startup_frame(frame)[FEATURE_COLUMNS]
+        cleaned = clean_startup_frame(frame)[MODEL_FEATURE_COLUMNS]
 
         if self.model_family == "sklearn":
             probability = float(self.pipeline.predict_proba(cleaned)[:, 1][0])

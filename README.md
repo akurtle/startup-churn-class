@@ -22,6 +22,7 @@ This project packages an end-to-end binary classification workflow for startup c
 - Validates API payloads with strict Pydantic schemas so malformed fields fail with clear 422 responses.
 - Emits structured JSON logs for each API request and returns an `X-Request-ID` header for request tracing.
 - Exposes `/metrics` with in-memory request, error-rate, and inference-volume counters for monitoring hooks.
+- Engineers higher-signal model features including burn-to-revenue ratio, revenue per employee, and runway buckets.
 
 ## Project structure
 

@@ -10,7 +10,14 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from startup_churn_classifier.config import CATEGORICAL_FEATURES, FEATURE_COLUMNS, NUMERIC_FEATURES
+from startup_churn_classifier.config import (
+    CATEGORICAL_FEATURES,
+    FEATURE_COLUMNS,
+    MODEL_FEATURE_COLUMNS,
+    NUMERIC_FEATURES,
+    RAW_CATEGORICAL_FEATURES,
+    RAW_NUMERIC_FEATURES,
+)
 
 
 NULL_TOKENS = {"", "na", "n/a", "nan", "none", "null", "unknown", "missing"}
@@ -72,6 +79,35 @@ def _parse_category(value: object) -> str | float:
     return text
 
 
+def _safe_divide(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+    numerator_values = numerator.astype(float).to_numpy()
+    denominator_values = denominator.astype(float).to_numpy()
+    return pd.Series(
+        np.where(denominator_values > 0, numerator_values / denominator_values, np.nan),
+        index=numerator.index,
+        dtype=float,
+    )
+
+
+def engineer_features(frame: pd.DataFrame) -> pd.DataFrame:
+    engineered = frame.copy()
+    monthly_revenue = _safe_divide(engineered["annual_revenue_usd"], pd.Series(12.0, index=engineered.index))
+    engineered["burn_to_revenue_ratio"] = _safe_divide(
+        engineered["monthly_burn_usd"],
+        monthly_revenue,
+    )
+    engineered["revenue_per_employee"] = _safe_divide(
+        engineered["annual_revenue_usd"],
+        engineered["team_size"],
+    )
+    engineered["runway_bucket"] = pd.cut(
+        engineered["runway_months"],
+        bins=[-np.inf, 6, 12, np.inf],
+        labels=["critical", "watch", "healthy"],
+    ).astype("object")
+    return engineered
+
+
 def clean_startup_frame(frame: pd.DataFrame) -> pd.DataFrame:
     cleaned = frame.copy()
     cleaned.columns = _standardize_columns(cleaned.columns)
@@ -80,14 +116,15 @@ def clean_startup_frame(frame: pd.DataFrame) -> pd.DataFrame:
     if missing_features:
         raise ValueError(f"Missing required features: {sorted(missing_features)}")
 
-    for feature in NUMERIC_FEATURES:
+    for feature in RAW_NUMERIC_FEATURES:
         cleaned[feature] = cleaned[feature].map(_parse_numeric).astype(float)
 
-    for feature in CATEGORICAL_FEATURES:
+    for feature in RAW_CATEGORICAL_FEATURES:
         parser = _parse_boolean if feature == "remote_friendly" else _parse_category
         cleaned[feature] = cleaned[feature].map(parser)
 
-    return cleaned
+    engineered = engineer_features(cleaned)
+    return engineered[MODEL_FEATURE_COLUMNS]
 
 
 def build_preprocessor() -> ColumnTransformer:

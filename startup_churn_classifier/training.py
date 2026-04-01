@@ -18,6 +18,7 @@ from sklearn.pipeline import Pipeline
 from startup_churn_classifier.config import (
     ARTIFACTS_DIR,
     FEATURE_COLUMNS,
+    MODEL_FEATURE_COLUMNS,
     RANDOM_STATE,
     RAW_DATA_PATH,
     TARGET_COLUMN,
@@ -92,7 +93,8 @@ def _save_sklearn_artifacts(model_name: str, pipeline: Pipeline, result: ModelRe
             "roc_auc": result.roc_auc,
             "selection_score": result.selection_score,
         },
-        "features": FEATURE_COLUMNS,
+        "input_features": FEATURE_COLUMNS,
+        "model_features": MODEL_FEATURE_COLUMNS,
     }
     (ARTIFACTS_DIR / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
@@ -110,7 +112,8 @@ def _save_torch_artifacts(preprocessor, model, result: ModelResult) -> None:
             "roc_auc": result.roc_auc,
             "selection_score": result.selection_score,
         },
-        "features": FEATURE_COLUMNS,
+        "input_features": FEATURE_COLUMNS,
+        "model_features": MODEL_FEATURE_COLUMNS,
     }
     (ARTIFACTS_DIR / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
@@ -119,8 +122,8 @@ def run_training_pipeline() -> dict[str, object]:
     raw_frame = ensure_dataset()
     cleaned_frame = clean_startup_frame(raw_frame)
 
-    dataset = cleaned_frame[FEATURE_COLUMNS + [TARGET_COLUMN]].copy()
-    dataset[TARGET_COLUMN] = pd.to_numeric(dataset[TARGET_COLUMN], errors="coerce").fillna(0).astype(int)
+    dataset = cleaned_frame[MODEL_FEATURE_COLUMNS].copy()
+    dataset[TARGET_COLUMN] = pd.to_numeric(raw_frame[TARGET_COLUMN], errors="coerce").fillna(0).astype(int)
 
     train_frame, test_frame = train_test_split(
         dataset,
@@ -129,9 +132,9 @@ def run_training_pipeline() -> dict[str, object]:
         stratify=dataset[TARGET_COLUMN],
     )
 
-    X_train = train_frame[FEATURE_COLUMNS]
+    X_train = train_frame[MODEL_FEATURE_COLUMNS]
     y_train = train_frame[TARGET_COLUMN].to_numpy()
-    X_test = test_frame[FEATURE_COLUMNS]
+    X_test = test_frame[MODEL_FEATURE_COLUMNS]
     y_test = test_frame[TARGET_COLUMN].to_numpy()
 
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -204,6 +207,18 @@ def run_training_pipeline() -> dict[str, object]:
         "rows": int(len(dataset)),
         "positive_rate": float(dataset[TARGET_COLUMN].mean()),
         "selected_model": best.name,
+        "feature_engineering": {
+            "derived_numeric_features": [
+                "burn_to_revenue_ratio",
+                "revenue_per_employee",
+            ],
+            "derived_categorical_features": ["runway_bucket"],
+            "runway_buckets": {
+                "critical": "runway_months <= 6",
+                "watch": "6 < runway_months <= 12",
+                "healthy": "runway_months > 12",
+            },
+        },
         "train_test_split": {
             "train_rows": int(len(train_frame)),
             "test_rows": int(len(test_frame)),
@@ -224,6 +239,7 @@ def run_training_pipeline() -> dict[str, object]:
         summary=summary,
         hyperparameters={
             "train_test_split": summary["train_test_split"],
+            "feature_engineering": summary["feature_engineering"],
             "logistic_regression": LOGISTIC_REGRESSION_PARAMS,
             "random_forest": RANDOM_FOREST_PARAMS,
             "pytorch_mlp": asdict(DEFAULT_MLP_CONFIG),
