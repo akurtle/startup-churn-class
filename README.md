@@ -18,6 +18,7 @@ This project packages an end-to-end binary classification workflow for startup c
 - Trains three models and compares them on precision, recall, and ROC AUC.
 - Applies a small complexity penalty so the final selection reflects resource-sensitive deployment trade-offs.
 - Saves the selected model into `artifacts/` and exposes it through an HTTP API.
+- Logs each training run under `results/` with metrics, hyperparameters, and artifact versions.
 
 ## Project structure
 
@@ -28,6 +29,7 @@ startup_churn_classifier/
 data/
   raw/
 artifacts/
+results/
 tests/
 train.py
 Dockerfile
@@ -42,6 +44,12 @@ pip install -r requirements.txt
 python train.py
 uvicorn startup_churn_classifier.api.main:app --reload
 ```
+
+Each `python train.py` run also writes:
+
+- `results/runs/<run_id>.json` for the full run record
+- `results/experiments.jsonl` as an append-only history log
+- `results/latest.json` for the newest experiment snapshot
 
 ## API usage
 

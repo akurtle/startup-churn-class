@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 artifacts/
 data/raw/
+results/*
+!results/.gitkeep
 pytest-cache-files-*/
 *.pyc
 *.pyo

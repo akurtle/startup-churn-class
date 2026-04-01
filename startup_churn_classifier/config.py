@@ -5,6 +5,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_PATH = DATA_DIR / "raw" / "startup_churn.csv"
 ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
+RESULTS_DIR = PROJECT_ROOT / "results"
 
 TARGET_COLUMN = "churned"
 RANDOM_STATE = 42

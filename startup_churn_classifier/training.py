@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,7 +23,9 @@ from startup_churn_classifier.config import (
     TARGET_COLUMN,
 )
 from startup_churn_classifier.data import generate_synthetic_dataset
+from startup_churn_classifier.experiment_tracking import log_experiment_run
 from startup_churn_classifier.models.pytorch_mlp import predict_probabilities, train_mlp
+from startup_churn_classifier.models.pytorch_mlp import MLPTrainingConfig
 from startup_churn_classifier.preprocessing import build_preprocessor, clean_startup_frame
 
 
@@ -37,6 +40,22 @@ class ModelResult:
     @property
     def selection_score(self) -> float:
         return self.roc_auc + 0.35 * self.recall + 0.15 * self.precision - self.complexity_penalty
+
+
+LOGISTIC_REGRESSION_PARAMS = {
+    "class_weight": "balanced",
+    "max_iter": 1200,
+    "random_state": RANDOM_STATE,
+}
+
+RANDOM_FOREST_PARAMS = {
+    "n_estimators": 250,
+    "min_samples_leaf": 3,
+    "class_weight": "balanced_subsample",
+    "random_state": RANDOM_STATE,
+}
+
+DEFAULT_MLP_CONFIG = MLPTrainingConfig()
 
 
 def ensure_dataset(path: Path = RAW_DATA_PATH) -> pd.DataFrame:
@@ -125,11 +144,7 @@ def run_training_pipeline() -> dict[str, object]:
             ("preprocessor", build_preprocessor()),
             (
                 "model",
-                LogisticRegression(
-                    class_weight="balanced",
-                    max_iter=1200,
-                    random_state=RANDOM_STATE,
-                ),
+                LogisticRegression(**LOGISTIC_REGRESSION_PARAMS),
             ),
         ]
     )
@@ -144,12 +159,7 @@ def run_training_pipeline() -> dict[str, object]:
             ("preprocessor", build_preprocessor()),
             (
                 "model",
-                RandomForestClassifier(
-                    n_estimators=250,
-                    min_samples_leaf=3,
-                    class_weight="balanced_subsample",
-                    random_state=RANDOM_STATE,
-                ),
+                RandomForestClassifier(**RANDOM_FOREST_PARAMS),
             ),
         ]
     )
@@ -170,6 +180,7 @@ def run_training_pipeline() -> dict[str, object]:
         np.asarray(X_train_transformed, dtype=np.float32),
         y_train.astype(np.float32),
         seed=RANDOM_STATE,
+        config=DEFAULT_MLP_CONFIG,
     )
     mlp_probabilities = predict_probabilities(
         mlp_model,
@@ -193,6 +204,12 @@ def run_training_pipeline() -> dict[str, object]:
         "rows": int(len(dataset)),
         "positive_rate": float(dataset[TARGET_COLUMN].mean()),
         "selected_model": best.name,
+        "train_test_split": {
+            "train_rows": int(len(train_frame)),
+            "test_rows": int(len(test_frame)),
+            "test_size": 0.2,
+            "random_state": RANDOM_STATE,
+        },
         "results": {
             result.name: {
                 "precision": float(round(result.precision, 4)),
@@ -203,5 +220,15 @@ def run_training_pipeline() -> dict[str, object]:
             for result in results
         },
     }
+    tracking = log_experiment_run(
+        summary=summary,
+        hyperparameters={
+            "train_test_split": summary["train_test_split"],
+            "logistic_regression": LOGISTIC_REGRESSION_PARAMS,
+            "random_forest": RANDOM_FOREST_PARAMS,
+            "pytorch_mlp": asdict(DEFAULT_MLP_CONFIG),
+        },
+    )
+    summary["experiment_tracking"] = tracking
     (ARTIFACTS_DIR / "metrics.json").write_text(json.dumps(summary, indent=2))
     return summary

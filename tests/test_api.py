@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from startup_churn_classifier.api.main import app, load_predictor
@@ -5,7 +8,7 @@ from startup_churn_classifier.training import run_training_pipeline
 
 
 def test_predict_endpoint() -> None:
-    run_training_pipeline()
+    summary = run_training_pipeline()
     load_predictor()
     client = TestClient(app)
 
@@ -31,3 +34,7 @@ def test_predict_endpoint() -> None:
     payload = response.json()
     assert 0 <= payload["churn_probability"] <= 1
     assert payload["predicted_label"] in {0, 1}
+    run_path = Path(summary["experiment_tracking"]["run_path"])
+    record = json.loads(run_path.read_text(encoding="utf-8"))
+    assert record["selected_model"] == summary["selected_model"]
+    assert record["artifact_version"] == summary["experiment_tracking"]["artifact_version"]
