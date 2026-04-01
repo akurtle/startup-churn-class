@@ -19,6 +19,7 @@ This project packages an end-to-end binary classification workflow for startup c
 - Applies a small complexity penalty so the final selection reflects resource-sensitive deployment trade-offs.
 - Saves the selected model into `artifacts/` and exposes it through an HTTP API.
 - Logs each training run under `results/` with metrics, hyperparameters, and artifact versions.
+- Validates API payloads with strict Pydantic schemas so malformed fields fail with clear 422 responses.
 
 ## Project structure
 
@@ -81,6 +82,8 @@ Example response:
   "predicted_label": 0
 }
 ```
+
+Invalid payloads now fail early at the API boundary. Examples include malformed numeric strings, unsupported categorical values, and unexpected extra fields.
 
 ## Tests
 
