@@ -44,9 +44,9 @@ Dockerfile
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
-python train.py
-uvicorn startup_churn_classifier.api.main:app --reload
+pip install -e .[dev]
+startup-churn train
+startup-churn serve --reload
 ```
 
 ## Task Runner
@@ -61,13 +61,85 @@ python tasks.py test
 python tasks.py docker-build
 ```
 
-Each `python train.py` run also writes:
+Each training run also writes:
 
 - `results/runs/<run_id>.json` for the full run record
 - `results/experiments.jsonl` as an append-only history log
 - `results/latest.json` for the newest experiment snapshot
 
+## Sample Results
+
+The latest local training run on the fixed synthetic split selected `logistic_regression` as the deployment model.
+
+| Model | Precision | Recall | ROC AUC | Selection Score |
+| --- | ---: | ---: | ---: | ---: |
+| Logistic Regression | 0.3854 | 0.7255 | 0.7705 | 1.0522 |
+| PyTorch MLP | 0.4337 | 0.7059 | 0.7550 | 0.9471 |
+| Random Forest | 0.5238 | 0.2157 | 0.7449 | 0.8190 |
+
+Holdout confusion matrix for the selected model:
+
+![Confusion matrix for the selected logistic regression model](docs/assets/confusion-matrix.svg)
+
+The current holdout set contains 240 rows: 189 non-churn examples and 51 churn examples. The selected model produced 130 true negatives, 59 false positives, 14 false negatives, and 37 true positives.
+
+## Architecture
+
+### Training Flow
+
+```mermaid
+flowchart LR
+    A[Raw CSV or synthetic generator] --> B[Cleaning and type coercion]
+    B --> C[Feature engineering
+burn-to-revenue ratio
+revenue per employee
+runway bucket]
+    C --> D[Train/test split]
+    D --> E[Logistic Regression]
+    D --> F[Random Forest]
+    D --> G[PyTorch MLP]
+    E --> H[Metric benchmark and complexity penalty]
+    F --> H
+    G --> H
+    H --> I[Best model selection]
+```
+
+### Artifact Flow
+
+```mermaid
+flowchart LR
+    A[Training pipeline] --> B[Saved model artifact]
+    A --> C[metrics.json]
+    A --> D[metadata.json]
+    A --> E[results/runs/run_id.json]
+    D --> F[Inference loader]
+    B --> F
+    C --> G[README sample metrics]
+    E --> H[Experiment history log]
+```
+
+### API Serving Flow
+
+```mermaid
+flowchart LR
+    A[Client request] --> B[FastAPI validation]
+    B --> C[Request ID middleware and structured logging]
+    C --> D[Shared preprocessing and feature engineering]
+    D --> E[Loaded model artifact]
+    E --> F[/predict response]
+    C --> G[/metrics counters]
+    C --> H[JSON logs]
+```
+
 ## API usage
+
+## Dashboard
+
+Open `http://127.0.0.1:8000/` after starting the app to use the dashboard. It includes:
+
+- a live prediction form wired to `/predict`
+- model leaderboard and deployed artifact metrics from `/dashboard/summary`
+- live monitoring cards sourced from `/metrics`
 
 `POST /predict`
 
@@ -119,4 +191,6 @@ docker run -p 8000:8000 startup-churn-classifier
 
 ## CI
 
-GitHub Actions runs `python train.py`, `pytest`, and a Docker image build on pushes to `main` and on pull requests. The workflow lives in `.github/workflows/ci.yml`.
+This repository is installable with `pyproject.toml`, so local setup, CI, and Docker use package installs rather than a loose script path.
+
+GitHub Actions runs `startup-churn train`, `pytest`, and a Docker image build on pushes to `main` and on pull requests. The workflow lives in `.github/workflows/ci.yml`.

@@ -2,13 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
 COPY . .
 
-RUN python train.py
+RUN pip install --no-cache-dir .
+RUN startup-churn train
 
 EXPOSE 8000
 
-CMD ["uvicorn", "startup_churn_classifier.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["startup-churn", "serve", "--host", "0.0.0.0", "--port", "8000"]

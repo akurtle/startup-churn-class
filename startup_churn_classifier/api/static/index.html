@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Startup Churn Control Room</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Startup Churn Classifier</p>
+          <h1>Control room for scoring startup churn risk in real time.</h1>
+          <p class="lede">
+            Run predictions, inspect the deployed model, and watch inference traffic from one
+            interface.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#predictor">Run a prediction</a>
+            <a class="button button-secondary" href="#monitoring">View monitoring</a>
+          </div>
+        </div>
+        <section class="hero-panel">
+          <div class="panel-label">Live service state</div>
+          <div class="status-grid">
+            <article class="status-card">
+              <span>API health</span>
+              <strong id="health-status">Checking...</strong>
+            </article>
+            <article class="status-card">
+              <span>Selected model</span>
+              <strong id="selected-model">Loading...</strong>
+            </article>
+            <article class="status-card">
+              <span>Artifact version</span>
+              <strong id="artifact-version">Loading...</strong>
+            </article>
+          </div>
+        </section>
+      </header>
+
+      <main class="dashboard-grid">
+        <section class="card spotlight" id="predictor">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Prediction Studio</p>
+              <h2>Score a startup profile</h2>
+            </div>
+            <p class="section-note">Fields accept cleaned business inputs, currencies, and percentages.</p>
+          </div>
+          <form id="prediction-form" class="prediction-form">
+            <label>
+              <span>Company age (months)</span>
+              <input name="company_age_months" value="24" />
+            </label>
+            <label>
+              <span>Monthly burn</span>
+              <input name="monthly_burn_usd" value="$120,000" />
+            </label>
+            <label>
+              <span>Runway (months)</span>
+              <input name="runway_months" value="10" />
+            </label>
+            <label>
+              <span>Team size</span>
+              <input name="team_size" value="18" />
+            </label>
+            <label>
+              <span>Founder exits</span>
+              <input name="founder_exits" value="0" />
+            </label>
+            <label>
+              <span>Customer growth</span>
+              <input name="customer_growth_pct" value="12%" />
+            </label>
+            <label>
+              <span>Support tickets (30d)</span>
+              <input name="support_tickets_last_30_days" value="14" />
+            </label>
+            <label>
+              <span>Annual revenue</span>
+              <input name="annual_revenue_usd" value="$1,900,000" />
+            </label>
+            <label>
+              <span>Market segment</span>
+              <select name="market_segment">
+                <option>SaaS</option>
+                <option>Fintech</option>
+                <option>Healthtech</option>
+                <option>AI</option>
+                <option>Ecommerce</option>
+              </select>
+            </label>
+            <label>
+              <span>Growth stage</span>
+              <select name="growth_stage">
+                <option>Pre-Seed</option>
+                <option>Seed</option>
+                <option selected>Series-A</option>
+                <option>Series-B</option>
+              </select>
+            </label>
+            <label>
+              <span>Remote friendly</span>
+              <select name="remote_friendly">
+                <option selected>yes</option>
+                <option>no</option>
+              </select>
+            </label>
+            <label>
+              <span>Investor tier</span>
+              <select name="investor_tier">
+                <option>none</option>
+                <option>angel</option>
+                <option selected>tier-2-vc</option>
+                <option>tier-1-vc</option>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="button button-primary" type="submit">Predict churn risk</button>
+              <button class="button button-secondary" type="button" id="reset-form">Reset defaults</button>
+            </div>
+          </form>
+          <div id="form-error" class="form-error" hidden></div>
+          <section id="prediction-result" class="result-panel" hidden>
+            <div class="result-badge" id="prediction-badge">Low risk</div>
+            <div class="result-stat">
+              <span>Churn probability</span>
+              <strong id="prediction-probability">0%</strong>
+            </div>
+            <div class="result-meta">
+              <span>Prediction label: <strong id="prediction-label">0</strong></span>
+              <span>Request ID: <strong id="prediction-request-id">-</strong></span>
+            </div>
+          </section>
+        </section>
+
+        <section class="card" id="model-overview">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Model Overview</p>
+              <h2>Deployment snapshot</h2>
+            </div>
+          </div>
+          <div class="metrics-grid">
+            <article class="metric-card">
+              <span>Precision</span>
+              <strong id="metric-precision">-</strong>
+            </article>
+            <article class="metric-card">
+              <span>Recall</span>
+              <strong id="metric-recall">-</strong>
+            </article>
+            <article class="metric-card">
+              <span>ROC AUC</span>
+              <strong id="metric-roc-auc">-</strong>
+            </article>
+            <article class="metric-card">
+              <span>Selection score</span>
+              <strong id="metric-selection-score">-</strong>
+            </article>
+          </div>
+          <div class="leaderboard">
+            <div class="leaderboard-head">
+              <span>Benchmark leaderboard</span>
+              <span>Selected via metric + complexity tradeoff</span>
+            </div>
+            <div id="leaderboard-rows" class="leaderboard-rows"></div>
+          </div>
+        </section>
+
+        <section class="card" id="monitoring">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Monitoring</p>
+              <h2>Live traffic and error rate</h2>
+            </div>
+            <p class="section-note">Auto-refreshes every 10 seconds.</p>
+          </div>
+          <div class="metrics-grid">
+            <article class="metric-card">
+              <span>Total requests</span>
+              <strong id="requests-total">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Request error rate</span>
+              <strong id="request-error-rate">0%</strong>
+            </article>
+            <article class="metric-card">
+              <span>Predictions served</span>
+              <strong id="predictions-total">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Prediction error rate</span>
+              <strong id="prediction-error-rate">0%</strong>
+            </article>
+          </div>
+          <div class="bars">
+            <div>
+              <div class="bar-label">
+                <span>Average request latency</span>
+                <strong id="avg-request-latency">0 ms</strong>
+              </div>
+              <div class="bar-track"><div id="request-latency-bar" class="bar-fill"></div></div>
+            </div>
+            <div>
+              <div class="bar-label">
+                <span>Average prediction latency</span>
+                <strong id="avg-prediction-latency">0 ms</strong>
+              </div>
+              <div class="bar-track"><div id="prediction-latency-bar" class="bar-fill alt"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Feature Stack</p>
+              <h2>Signals used by the deployed model</h2>
+            </div>
+          </div>
+          <div class="pill-group" id="feature-pills"></div>
+        </section>
+      </main>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -17,17 +17,15 @@ def run_command(command: list[str]) -> int:
 
 
 def install() -> int:
-    return run_command([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+    return run_command([sys.executable, "-m", "pip", "install", "-e", ".[dev]"])
 
 
 def train() -> int:
-    return run_command([sys.executable, "train.py"])
+    return run_command([sys.executable, "-m", "startup_churn_classifier.cli", "train"])
 
 
 def serve() -> int:
-    return run_command(
-        [sys.executable, "-m", "uvicorn", "startup_churn_classifier.api.main:app", "--reload"]
-    )
+    return run_command([sys.executable, "-m", "startup_churn_classifier.cli", "serve", "--reload"])
 
 
 def test() -> int:

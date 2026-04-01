@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 520" role="img" aria-labelledby="title desc">
+  <title id="title">Confusion Matrix for Logistic Regression</title>
+  <desc id="desc">Confusion matrix on the 240-row holdout set with true negatives 130, false positives 59, false negatives 14, and true positives 37.</desc>
+  <style>
+    .bg { fill: #f4efe6; }
+    .title { font: 700 28px "Segoe UI", Arial, sans-serif; fill: #1f2933; }
+    .subtitle { font: 400 16px "Segoe UI", Arial, sans-serif; fill: #52606d; }
+    .axis { font: 700 18px "Segoe UI", Arial, sans-serif; fill: #102a43; }
+    .label { font: 600 17px "Segoe UI", Arial, sans-serif; fill: #243b53; }
+    .value { font: 700 42px "Segoe UI", Arial, sans-serif; fill: #102a43; }
+    .metric { font: 400 14px "Segoe UI", Arial, sans-serif; fill: #486581; }
+    .note { font: 400 14px "Segoe UI", Arial, sans-serif; fill: #52606d; }
+  </style>
+
+  <rect class="bg" width="760" height="520" rx="24" />
+
+  <text class="title" x="50" y="60">Selected Model Confusion Matrix</text>
+  <text class="subtitle" x="50" y="90">Logistic Regression on the current 240-row synthetic holdout set</text>
+
+  <text class="axis" x="360" y="138">Predicted</text>
+  <text class="axis" x="84" y="290" transform="rotate(-90 84 290)">Actual</text>
+
+  <text class="label" x="305" y="175">Stay</text>
+  <text class="label" x="505" y="175">Churn</text>
+  <text class="label" x="170" y="265">Stay</text>
+  <text class="label" x="156" y="385">Churn</text>
+
+  <rect x="250" y="190" width="180" height="120" rx="18" fill="#b8e6c3" />
+  <rect x="450" y="190" width="180" height="120" rx="18" fill="#f5b2a8" />
+  <rect x="250" y="320" width="180" height="120" rx="18" fill="#fde3b0" />
+  <rect x="450" y="320" width="180" height="120" rx="18" fill="#f8d39a" />
+
+  <text class="value" x="340" y="258" text-anchor="middle">130</text>
+  <text class="metric" x="340" y="286" text-anchor="middle">True Negatives</text>
+
+  <text class="value" x="540" y="258" text-anchor="middle">59</text>
+  <text class="metric" x="540" y="286" text-anchor="middle">False Positives</text>
+
+  <text class="value" x="340" y="388" text-anchor="middle">14</text>
+  <text class="metric" x="340" y="416" text-anchor="middle">False Negatives</text>
+
+  <text class="value" x="540" y="388" text-anchor="middle">37</text>
+  <text class="metric" x="540" y="416" text-anchor="middle">True Positives</text>
+
+  <text class="note" x="50" y="480">Derived from the latest trained artifact with threshold 0.5. Precision: 0.3854, Recall: 0.7255, ROC AUC: 0.7705.</text>
+</svg>

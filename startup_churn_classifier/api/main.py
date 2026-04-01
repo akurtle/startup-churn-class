@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import json
+from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 
+from startup_churn_classifier import __version__
+from startup_churn_classifier.config import ARTIFACTS_DIR
 from startup_churn_classifier.config import FEATURE_COLUMNS
 from startup_churn_classifier.api.logging import configure_structured_logging, log_event
 from startup_churn_classifier.api.metrics import api_metrics
@@ -15,6 +20,8 @@ from startup_churn_classifier.api.schemas import StartupFeatures
 
 
 predictor: StartupChurnPredictor | None = None
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+METRICS_PATH = ARTIFACTS_DIR / "metrics.json"
 
 
 def load_predictor() -> None:
@@ -30,6 +37,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Startup Churn Classifier", version="0.1.0", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 @app.middleware("http")
@@ -83,9 +91,37 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/", include_in_schema=False)
+def dashboard() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
 @app.get("/features")
 def features() -> dict[str, list[str]]:
     return {"features": FEATURE_COLUMNS}
+
+
+@app.get("/dashboard/summary")
+def dashboard_summary() -> dict[str, object]:
+    if predictor is None:
+        raise RuntimeError("Predictor failed to initialize.")
+
+    artifact_metrics: dict[str, object] = {}
+    if METRICS_PATH.exists():
+        artifact_metrics = json.loads(METRICS_PATH.read_text(encoding="utf-8"))
+
+    return {
+        "app": {
+            "name": app.title,
+            "version": __version__,
+        },
+        "selected_model": predictor.selected_model,
+        "model_family": predictor.model_family,
+        "threshold": predictor.threshold,
+        "artifact_metrics": artifact_metrics,
+        "model_metadata": predictor.metadata,
+        "features": FEATURE_COLUMNS,
+    }
 
 
 @app.get("/metrics")
