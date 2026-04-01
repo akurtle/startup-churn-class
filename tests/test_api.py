@@ -3,14 +3,16 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from startup_churn_classifier.api.logging import LOGGER_NAME
 from startup_churn_classifier.api.main import app, load_predictor
 from startup_churn_classifier.training import run_training_pipeline
 
 
-def test_predict_endpoint() -> None:
+def test_predict_endpoint(caplog) -> None:
     summary = run_training_pipeline()
     load_predictor()
     client = TestClient(app)
+    caplog.set_level("INFO", logger=LOGGER_NAME)
 
     response = client.post(
         "/predict",
@@ -31,6 +33,7 @@ def test_predict_endpoint() -> None:
     )
 
     assert response.status_code == 200
+    assert response.headers["X-Request-ID"]
     payload = response.json()
     assert 0 <= payload["churn_probability"] <= 1
     assert payload["predicted_label"] in {0, 1}
@@ -38,6 +41,14 @@ def test_predict_endpoint() -> None:
     record = json.loads(run_path.read_text(encoding="utf-8"))
     assert record["selected_model"] == summary["selected_model"]
     assert record["artifact_version"] == summary["experiment_tracking"]["artifact_version"]
+    completed_logs = [
+        json.loads(entry.message)
+        for entry in caplog.records
+        if entry.name == LOGGER_NAME and "request_completed" in entry.message
+    ]
+    assert completed_logs
+    assert completed_logs[-1]["request_id"] == response.headers["X-Request-ID"]
+    assert completed_logs[-1]["status_code"] == 200
 
 
 def test_predict_rejects_invalid_numeric_payload() -> None:
@@ -64,6 +75,7 @@ def test_predict_rejects_invalid_numeric_payload() -> None:
     )
 
     assert response.status_code == 422
+    assert response.headers["X-Request-ID"]
     payload = response.json()
     assert payload["detail"][0]["loc"][-1] == "monthly_burn_usd"
     assert "valid number" in payload["detail"][0]["msg"]
@@ -94,5 +106,6 @@ def test_predict_rejects_unknown_fields() -> None:
     )
 
     assert response.status_code == 422
+    assert response.headers["X-Request-ID"]
     payload = response.json()
     assert payload["detail"][0]["loc"][-1] == "extra_field"

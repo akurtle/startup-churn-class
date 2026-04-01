@@ -20,6 +20,7 @@ This project packages an end-to-end binary classification workflow for startup c
 - Saves the selected model into `artifacts/` and exposes it through an HTTP API.
 - Logs each training run under `results/` with metrics, hyperparameters, and artifact versions.
 - Validates API payloads with strict Pydantic schemas so malformed fields fail with clear 422 responses.
+- Emits structured JSON logs for each API request and returns an `X-Request-ID` header for request tracing.
 
 ## Project structure
 
