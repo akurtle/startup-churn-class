@@ -9,6 +9,7 @@ from fastapi.responses import Response
 
 from startup_churn_classifier.config import FEATURE_COLUMNS
 from startup_churn_classifier.api.logging import configure_structured_logging, log_event
+from startup_churn_classifier.api.metrics import api_metrics
 from startup_churn_classifier.inference import StartupChurnPredictor
 from startup_churn_classifier.api.schemas import StartupFeatures
 
@@ -49,6 +50,7 @@ async def add_request_context(request: Request, call_next) -> Response:
         response = await call_next(request)
     except Exception:
         duration_ms = round((perf_counter() - start) * 1000, 2)
+        api_metrics.record_request(path=request.url.path, status_code=500, duration_ms=duration_ms)
         log_event(
             "request_failed",
             request_id=request_id,
@@ -59,6 +61,11 @@ async def add_request_context(request: Request, call_next) -> Response:
         raise
 
     duration_ms = round((perf_counter() - start) * 1000, 2)
+    api_metrics.record_request(
+        path=request.url.path,
+        status_code=response.status_code,
+        duration_ms=duration_ms,
+    )
     response.headers["X-Request-ID"] = request_id
     log_event(
         "request_completed",
@@ -79,6 +86,11 @@ def health() -> dict[str, str]:
 @app.get("/features")
 def features() -> dict[str, list[str]]:
     return {"features": FEATURE_COLUMNS}
+
+
+@app.get("/metrics")
+def metrics() -> dict[str, object]:
+    return api_metrics.snapshot()
 
 
 @app.post("/predict")
