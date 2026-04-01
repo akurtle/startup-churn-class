@@ -86,3 +86,7 @@ pytest
 docker build -t startup-churn-classifier .
 docker run -p 8000:8000 startup-churn-classifier
 ```
+
+## CI
+
+GitHub Actions runs `python train.py`, `pytest`, and a Docker image build on pushes to `main` and on pull requests. The workflow lives in `.github/workflows/ci.yml`.
